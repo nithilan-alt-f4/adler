@@ -1,0 +1,84 @@
+name: Build Adler
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pyinstaller pynput
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: pyinstaller --onefile --windowed --name Adler --icon=adler.ico adler.py
+
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir adler.iconset
+          sips -z 16 16     adler_logo.png --out adler.iconset/icon_16x16.png
+          sips -z 32 32     adler_logo.png --out adler.iconset/icon_16x16@2x.png
+          sips -z 32 32     adler_logo.png --out adler.iconset/icon_32x32.png
+          sips -z 64 64     adler_logo.png --out adler.iconset/icon_32x32@2x.png
+          sips -z 128 128   adler_logo.png --out adler.iconset/icon_128x128.png
+          sips -z 256 256   adler_logo.png --out adler.iconset/icon_128x128@2x.png
+          sips -z 256 256   adler_logo.png --out adler.iconset/icon_256x256.png
+          sips -z 512 512   adler_logo.png --out adler.iconset/icon_256x256@2x.png
+          sips -z 512 512   adler_logo.png --out adler.iconset/icon_512x512.png
+          cp adler_logo.png adler.iconset/icon_512x512@2x.png
+          iconutil -c icns adler.iconset
+          pyinstaller --onefile --windowed --name Adler --icon=adler.icns adler.py
+
+      - name: Zip macOS app
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -r Adler-mac.zip Adler.app
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Adler-windows
+          path: dist/Adler.exe
+
+      - name: Upload artifact (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Adler-mac
+          path: dist/Adler-mac.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Adler-windows/Adler.exe
+            dist/Adler-mac/Adler-mac.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
