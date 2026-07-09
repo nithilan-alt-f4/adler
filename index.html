@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adler — auto clicker</title>
+<meta name="description" content="Adler is a lightweight, precise auto clicker for Windows and macOS. Millisecond intervals, global hotkeys, click limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f1e;
+    --bg-2: #1a1a2e;
+    --accent: #e94560;
+    --accent-2: #ff8a5c;
+    --accent-3: #ffd66b;
+    --violet: #4a2b6b;
+    --text: #f2f2f5;
+    --text-muted: #8a8fa8;
+    --text-faint: #454b66;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-font-smoothing: antialiased; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Ambient background: dot grid + mouse-reactive glow ─────────── */
+
+  .bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(233,69,96,0.05) 1px, transparent 1.5px);
+    background-size: 34px 34px;
+    animation: driftGrid 40s linear infinite;
+  }
+
+  @keyframes driftGrid {
+    from { background-position: 0 0; }
+    to   { background-position: 340px 340px; }
+  }
+
+  .glow {
+    position: fixed;
+    inset: -20%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(600px circle at var(--mx, 50%) var(--my, 35%), rgba(233,69,96,0.16), transparent 60%),
+      radial-gradient(900px circle at 15% 85%, rgba(74,43,107,0.35), transparent 55%),
+      radial-gradient(700px circle at 90% 10%, rgba(255,214,107,0.08), transparent 55%);
+    transition: background-position 0.2s ease-out;
+  }
+
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    opacity: 0.045;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  #ripples {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .ripple {
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    animation: rippleOut 900ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  }
+
+  .ripple::after {
+    content: '';
+    position: absolute;
+    inset: 40%;
+    border-radius: 50%;
+    background: var(--accent-3);
+    animation: dotFade 500ms ease-out forwards;
+  }
+
+  @keyframes rippleOut {
+    0%   { transform: scale(0.2); opacity: 0.9; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+
+  @keyframes dotFade {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* ── Corner link ──────────────────────────────────────────────── */
+
+  .corner-link {
+    position: fixed;
+    top: 24px;
+    right: 28px;
+    z-index: 5;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    transition: color 0.2s ease;
+  }
+  .corner-link:hover { color: var(--text); }
+
+  /* ── Hero ─────────────────────────────────────────────────────── */
+
+  .hero {
+    position: relative;
+    z-index: 3;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .wordmark {
+    position: relative;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: clamp(64px, 15vw, 168px);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    background: linear-gradient(100deg, var(--accent) 10%, var(--accent-2) 45%, var(--accent-3) 65%, var(--accent) 90%);
+    background-size: 260% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 7s ease-in-out infinite;
+  }
+
+  .wordmark::after {
+    content: 'ADLER';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    color: var(--accent);
+    filter: blur(46px);
+    opacity: 0.35;
+    animation: glowPulse 4.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
+  }
+
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.25; }
+    50%      { opacity: 0.45; }
+  }
+
+  .tagline {
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .hotkey-hint {
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+
+  /* ── Downloads ────────────────────────────────────────────────── */
+
+  .downloads {
+    margin-top: 52px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .dl-btn {
+    position: relative;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    padding: 17px 32px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+  }
+
+  .dl-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.35), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s ease;
+  }
+
+  .dl-btn:hover::before { left: 130%; }
+
+  .dl-btn:hover {
+    transform: translateY(-3px);
+  }
+
+  .dl-primary {
+    color: #1a0f14;
+    background: linear-gradient(100deg, var(--accent), var(--accent-2) 60%, var(--accent-3));
+    box-shadow: 0 8px 24px -6px rgba(233,69,96,0.55);
+  }
+  .dl-primary:hover {
+    box-shadow: 0 14px 34px -8px rgba(233,69,96,0.75);
+  }
+
+  .dl-secondary {
+    color: var(--text);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(10px);
+  }
+  .dl-secondary:hover {
+    border-color: rgba(255,255,255,0.28);
+    box-shadow: 0 10px 28px -10px rgba(0,0,0,0.6);
+  }
+
+  .version {
+    margin-top: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+
+  @media (max-width: 520px) {
+    .dl-btn { padding: 15px 24px; font-size: 13px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bg, .wordmark, .wordmark::after { animation: none; }
+    .glow { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="glow" id="glow"></div>
+<div class="grain"></div>
+<div id="ripples"></div>
+
+<a class="corner-link" href="https://github.com/TheDailyForensic/Adler">github &#8599;</a>
+
+<main class="hero">
+  <h1 class="wordmark">ADLER</h1>
+  <p class="tagline">auto clicker</p>
+  <p class="hotkey-hint">- play/pause &middot; = stop</p>
+
+  <div class="downloads">
+    <a class="dl-btn dl-primary" href="https://github.com/nithilan-alt-f4/adler/releases/download/v1.0/Adler.exe">Download for Windows</a>
+    <a class="dl-btn dl-secondary" href="https://github.com/nithilan-alt-f4/adler/releases/download/v1.0/Adler-mac.zip">Download for macOS</a>
+  </div>
+  <p class="version mono">v1.0 &middot; Windows 10/11 &middot; macOS 12+</p>
+</main>
+
+<script>
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const glow = document.getElementById('glow');
+  const rippleLayer = document.getElementById('ripples');
+
+  // Mouse-reactive glow
+  if (!reduced) {
+    window.addEventListener('pointermove', (e) => {
+      const xPct = (e.clientX / window.innerWidth) * 100;
+      const yPct = (e.clientY / window.innerHeight) * 100;
+      glow.style.setProperty('--mx', xPct + '%');
+      glow.style.setProperty('--my', yPct + '%');
+    });
+  }
+
+  function spawnRipple(x, y) {
+    const r = document.createElement('div');
+    r.className = 'ripple';
+    r.style.left = x + 'px';
+    r.style.top = y + 'px';
+    rippleLayer.appendChild(r);
+    setTimeout(() => r.remove(), 950);
+  }
+
+  // Ambient auto-clicks, echoing the app itself
+  if (!reduced) {
+    (function ambientClick() {
+      const x = Math.random() * window.innerWidth;
+      const y = Math.random() * window.innerHeight;
+      spawnRipple(x, y);
+      setTimeout(ambientClick, 700 + Math.random() * 1400);
+    })();
+  }
+
+  // Real clicks ripple too
+  window.addEventListener('pointerdown', (e) => spawnRipple(e.clientX, e.clientY));
+</script>
+
+</body>
+</html>
