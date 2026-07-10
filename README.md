@@ -3,11 +3,10 @@
 i needed a autoclicker..... i made a autoclicker
 thats it.. its just a autoclicker
 
-i needed it so i made it
 
 
+you need a autocliker??
+you want MY autocliker??
 
-you want my autocliker??
-
-you like this autoclicker???
+you likee my autoclicker???
 # KEEP IT BRO KEEEEEEEEEEEEEEEEEEEEEEEEPPP ITT
